@@ -32,7 +32,7 @@ typedef struct{
 }Tlogin;
 
 typedef struct{
-	char msg[100];
+	char texto[100];
 }MENSAGEM;
 
 typedef struct{
@@ -41,8 +41,19 @@ typedef struct{
 }Tmsg;
 
 typedef struct{
-	char username;
 	int pid;
+	int movimento;
+	int item;
+}JOGADA;
+
+typedef struct{
+	int tipo;
+	JOGADA jog;
+}Tjogada;
+
+typedef struct{
+	int pid;
+	char username;
 	int posx; int posy;
 	int bombinhas;
 	int megaBombas;

@@ -10,7 +10,7 @@ void terminaServer(){
 	exit(EXIT_SUCCESS);
 }
 
-int procuraLogin(char username[], char password[]){
+/*int procuraLogin(char username[], char password[]){
 	char user[20], pass[20];
 	FILE *fp;
 
@@ -27,7 +27,7 @@ int procuraLogin(char username[], char password[]){
 	}while(fgetc(fp) != EOF);
 	fprintf(fp, "%s %s\n", username, password);
 	return 2;
-}
+}*/
 
 int main(void){
 	int lidos, escritos, res, i, j, nfd;
@@ -44,7 +44,7 @@ int main(void){
 
 	int header;
 	LOGIN log;
-	MENSAGEM msg;
+	Tmsg mensagem;
 	char cpid[10];
 
 	for(i=0; i<20; pids[i++] = -1);
@@ -190,11 +190,11 @@ int main(void){
 			if(header == 0){
 				lidos = read(sfifofd, &log, sizeof(LOGIN));
 				printf("Recebido tentativa de Login do pid: %d (%d bytes)\n", log.pid, lidos);
-				printf("Tratamento do Login:\nUsername: %s / Password: %s", log.username, log.password);
+				printf("Tratamento do Login:\nUsername: %s / Password: %s\n", log.username, log.password);
 				sprintf(cpid, "%d", log.pid);
 				cfifofd = open(cpid, O_WRONLY);
-				sprintf(msg.msg, "Login feito com sucesso.\n");
-				escritos = write(cfifofd, &msg, sizeof(MENSAGEM));
+				strcpy(mensagem.msg.texto, "Login feito com sucesso.");
+				escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
 			}else{
 				//outro tipo de mensagem
 			}

@@ -13,10 +13,10 @@ void terminaCliente(int i){
 }
 
 int main(){
-	int i, j, read_res;
+	int i, j, header;
 	
 	char fifopid[10];
-	LOGIN log;
+	Tlogin login;
 	MENSAGEM resp;
 
 	int nfd;
@@ -29,8 +29,8 @@ int main(){
 	}
 	printf("Sinal SIGINT configurado com sucesso\n");
 
-	log.pid = getpid();
-	sprintf(fifopid, "%d", log.pid);
+	login.log.pid = getpid();
+	sprintf(fifopid, "%d", login.log.pid);
 	if(mkfifo(fifopid, 0777) == -1){
 		perror("FIFO do cliente deu erro.\n");
 		exit(EXIT_FAILURE);
@@ -56,13 +56,14 @@ int main(){
 
 	do{
 		printf("Username: ");
-		scanf("%s", log.username);
+		scanf("%s", login.log.username);
 		printf("Password: ");
-		scanf("%s", log.password);
+		scanf("%s", login.log.password);
 
-		write(sfifofd, &log, sizeof(LOGIN));
+		write(sfifofd, &login, sizeof(Tlogin));
+		read(cfifofd, &header, sizeof(Tmsg));
 		read(cfifofd, &resp, sizeof(MENSAGEM));
-	}while(strcmp(resp.msg, "sucesso") == 0);
+	}while(strcmp(resp.texto, "sucesso") == 0);
 
 	while(1){
 		tempo.tv_sec = 10;
