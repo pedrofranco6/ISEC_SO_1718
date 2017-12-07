@@ -11,10 +11,10 @@ void terminaServer(){
 	//broadcast para todos users online que o server vai terminar
 	for(i=0; i<NMAXPLAY; i++){
 		if(jogdrs[i].pid != -1){
-printf("%d\n", i); //terminar o erro do broadcast para o quit
 			sprintf(cpid, "%d", jogdrs[i].pid);
 			mensagem.tipo = 2;
 			sprintf(mensagem.msg.texto, "shutdown");
+printf("%d %s %s\n", i, cpid, mensagem.msg.texto); //terminar o erro do broadcast para o quit
 			cfifofd = open(cpid, O_WRONLY);
 			write(cfifofd, &mensagem, sizeof(Tmsg));
 			close(cfifofd);
