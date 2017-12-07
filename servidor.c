@@ -16,7 +16,7 @@ void terminaServer(){
 			sprintf(mensagem.msg.texto, "shutdown");
 printf("%d %s %s\n", i, cpid, mensagem.msg.texto); //terminar o erro do broadcast para o quit
 			cfifofd = open(cpid, O_WRONLY);
-			write(cfifofd, &mensagem, sizeof(Tmsg));
+			write(cfifofd, &mensagem, sizeof(Tmsg)); //mensagem mal enviada?
 			close(cfifofd);
 		}
 	}
