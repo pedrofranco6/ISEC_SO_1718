@@ -53,7 +53,7 @@ typedef struct{
 
 typedef struct{
 	int pid;
-	char username;
+	char username[20];
 	int posx; int posy;
 	int bombinhas;
 	int megaBombas;
@@ -69,5 +69,5 @@ typedef struct{
 
 typedef struct{
 	int tipo;
-	CELULAS *mapa;
+	CELULAS mapa[NLINHAS][NCOLUNAS];
 }MAPA;

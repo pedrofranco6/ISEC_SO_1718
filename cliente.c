@@ -4,8 +4,13 @@ int sfifofd, cfifofd;
 
 void terminaCliente(int i){
 	char cpid[10];
-	printf("Servidor a terminar (interrompido por teclado).\n\n");
-	//broadcast para todos users online que o server vai terminar
+	Tmsg mensagem;
+	printf("\nCliente a terminar (interrompido por teclado).\n\n");
+	sfifofd = open("sfifo", O_WRONLY);
+	mensagem.tipo = 2;
+	sprintf(mensagem.msg.texto, "%d", getpid());
+	write(sfifofd, &mensagem, sizeof(Tmsg));
+	close(sfifofd);
 	close(cfifofd);
 	sprintf(cpid, "%d", getpid());
 	unlink(cpid);
@@ -13,7 +18,7 @@ void terminaCliente(int i){
 }
 
 int main(){
-	int i, j, header;
+	int i, j, header, lidos, escritos;
 	
 	char fifopid[10];
 	Tlogin login;
@@ -61,9 +66,21 @@ int main(){
 		scanf("%s", login.log.password);
 
 		write(sfifofd, &login, sizeof(Tlogin));
-		read(cfifofd, &header, sizeof(Tmsg));
-		read(cfifofd, &resp, sizeof(MENSAGEM));
-	}while(strcmp(resp.texto, "sucesso") == 0);
+		read(cfifofd, &header, sizeof(int));
+		if(header == 1){
+			read(cfifofd, &resp, sizeof(MENSAGEM));
+			if(strcmp(resp.texto, "passerr") == 0){
+				printf("Password errada!\n");
+			}else if(strcmp(resp.texto, "logado") == 0){
+				printf("A conta ja se encontra logada.\n");
+			}
+		}
+	}while(strcmp(resp.texto, "sucesso") != 0 && strcmp(resp.texto, "registo") != 0);
+		
+	if(strcmp(resp.texto, "sucesso") == 0)
+		printf("Login efetuado com sucesso.\n");
+	else if(strcmp(resp.texto, "registo") == 0)
+		printf("Registo efetuado com sucesso.\n");
 
 	while(1){
 		tempo.tv_sec = 10;
@@ -76,6 +93,7 @@ int main(){
 		nfd = select(sfifofd+1, &read_fds, NULL, NULL, &tempo);
 
 		if(nfd == 0){
+			printf("Cliente a espera...\n");
 			fflush(stdout);
 			continue; //deve ter mesmo continue? ou ficar bloqueado?
 		}
@@ -93,7 +111,20 @@ int main(){
 		}
 
 		if(FD_ISSET(cfifofd, &read_fds)){
+			//header = 0 -> mapa
+			//header = 1 -> mensagens
 			//ler do fifo de cliente
+			lidos = read(cfifofd, &header, sizeof(int));
+printf("header = %d\n", header);
+			if(header == 0){
+			}else if(header == 1){
+				lidos = read(cfifofd, &resp, sizeof(MENSAGEM));
+printf("mensagem lida -> %s\n", resp.texto);
+				if(strcmp(resp.texto, "shutdown") == 0){
+printf("entrou no terminar\n");
+					terminaCliente(1);
+				}
+			}
 		}
 	}
 }

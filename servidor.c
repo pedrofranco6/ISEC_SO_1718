@@ -1,39 +1,56 @@
 #include "util.h"
 
 int sfifofd, cfifofd;
+JOGADOR jogdrs[NMAXPLAY];
 
 void terminaServer(){
-	printf("Servidor a terminar (interrompido por teclado).\n\n");
+	int i;
+	char cpid[10];
+	Tmsg mensagem;
+	printf("\nServidor a terminar (interrompido por teclado).\n\n");
 	//broadcast para todos users online que o server vai terminar
+	for(i=0; i<NMAXPLAY; i++){
+		if(jogdrs[i].pid != -1){
+printf("%d\n", i); //terminar o erro do broadcast para o quit
+			sprintf(cpid, "%d", jogdrs[i].pid);
+			mensagem.tipo = 2;
+			sprintf(mensagem.msg.texto, "shutdown");
+			cfifofd = open(cpid, O_WRONLY);
+			write(cfifofd, &mensagem, sizeof(Tmsg));
+			close(cfifofd);
+		}
+	}
 	close(sfifofd);
 	unlink("sfifo");
 	exit(EXIT_SUCCESS);
 }
 
-/*int procuraLogin(char username[], char password[]){
+int procuraLogin(char username[], char password[]){
 	char user[20], pass[20];
 	FILE *fp;
 
-	fp = fopen("logins.txt", "r");
+	fp = fopen("logins.txt", "r+");
 
-	do{
+	while(fgetc(fp) != EOF){
 		fscanf(fp, "%s %s", user, pass);
 		if(strcmp(username, user) == 0){
-			if(strcmp(password, pass) == 0)
-				return 1;
-			else
-				return 0;
+			if(strcmp(password, pass) == 0){
+				fclose(fp);
+				return 1; //user e pass correta -> login sucesso
+			}else{
+				fclose(fp);
+				return 0; //pass errada
+			}
 		}
-	}while(fgetc(fp) != EOF);
+	}
 	fprintf(fp, "%s %s\n", username, password);
-	return 2;
-}*/
+	fclose(fp);
+	return 2; //feito registo
+}
 
 int main(void){
-	int lidos, escritos, res, i, j, nfd;
-	int pids[NMAXPLAY];
-	char c;
-	char pid[10], cmd[50], cmdaux[50], username[20], password[20], usernameaux[20], passwordaux[20];
+	int lidos, escritos, res, i, j, nfd, pid;
+	char cmd[50], cmdaux[50], username[20], password[20], usernameaux[20], passwordaux[20];
 	CELULAS *m;
 	FILE *fp_logins;
 	fd_set read_fds;
@@ -45,9 +62,10 @@ int main(void){
 	int header;
 	LOGIN log;
 	Tmsg mensagem;
+	MENSAGEM msg;
 	char cpid[10];
 
-	for(i=0; i<20; pids[i++] = -1);
+	for(i=0; i<20; jogdrs[i++].pid = -1);
 
 	if(signal(SIGINT, terminaServer) == SIG_ERR){
 		perror("Nao foi possivel configurar o sinal SIGINT\n");
@@ -65,7 +83,6 @@ int main(void){
 	}
 	printf("FIFO do servidor criado com sucesso.\n");
 
-	//nao fica em bloqueante
 	sfifofd = open("sfifo", O_RDWR);
 
 	if(sfifofd == -1){
@@ -98,6 +115,14 @@ int main(void){
 			exit(EXIT_FAILURE);
 		}
 
+		//envia mapa para os clientes
+		/*for(i=0; i<NMAXPLAY; i++){
+			if(jogdrs[i].pid != -1){
+				sprintf(cpid, "%d", jogdrs[i].pid);
+				
+			}
+		}*/
+
 		if(FD_ISSET(0, &read_fds)){ //alguma coisa do teclado?
 			fgets(cmd, sizeof(cmd), stdin);
 			sscanf(cmd, "%s", cmdaux);
@@ -120,29 +145,23 @@ int main(void){
 			}else if(strcmp(cmdaux, "users") == 0){
 				printf("Lista de Utilizadores:\n");
 				for(i=0; i<20; i++){
-					if(pids[i]!=-1){
-						sprintf(pid, "%d", pids[i]);
-						//Terminar a parte dos pipes para pedir usernames
-						//aos users que estao online
-						//s = open(pid, O_RDONLY);
-						//read(fd, &p, sizeof(PEDIDO));
-						//printf("Pid: %d / Username: %s", p.pid, p.username);
-						//close(fd);
-						//Vale a pena fazer dicionario? com os users e os pids?
-						//Simplifica muito os comandos kick e users
+					if(jogdrs[i].pid != -1){
+						printf("PID: %d / Username: %s\n", jogdrs[i].pid, jogdrs[i].username);
 					}
 				}
 			}else if(strcmp(cmdaux, "kick") == 0){
+				sscanf(cmd, "kick %s", username);
 				for(i=0; i<20; i++){
-					if(pids[i]!=-1){
-						//sprintf(pid, "%d", pids[i]);
-						//fd = open(pid, O_RDONLY);
-						//read(fd, &p, sizeof(PEDIDO));
-							//if(strcmp(username, p.username) == 0){
-								//kick player
-								//break;
-							//}
-						//close(fd);
+					if(strcmp(jogdrs[i].username, username) == 0){
+						sprintf(cpid, "%d", jogdrs[i].pid);
+						mensagem.tipo = 1;
+						sprintf(mensagem.msg.texto, "kick");
+						cfifofd = open(cpid, O_WRONLY);
+						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+						printf("Mensagem de kick enviada (%d bytes)\n", escritos);
+						jogdrs[i].pid = -1;
+						close(cfifofd);
+						break;
 					}
 				}
 			}else if(strcmp(cmdaux, "game") == 0){
@@ -150,25 +169,19 @@ int main(void){
 			}else if(strcmp(cmdaux, "shutdown") == 0 || strcmp(cmdaux, "quit") == 0){
 				terminaServer(1);
 			}else if(strcmp(cmdaux, "map") == 0){
-				char test[20];
-				sscanf(cmd, "map %s", test);
-//				sprintf(cmdaux, "mapa0.txt");
-				printf("A carregar mapa...\n");				
-//				m = lerMapa(cmdaux);
-				FILE *fp = fopen(cmdaux, "r");;
-				char linha[NCOLUNAS];
+				//sscanf(cmd, "map %s", cmdaux);
+sprintf(cmdaux, "mapa0.txt");
+				printf("A carregar mapa... -> %s\n", cmdaux);
+				FILE *fp = fopen(cmdaux, "r");
+				char linha[256];
+				i=0;
 				while(fgets(linha, sizeof(linha), fp)){
-					for(i=0; i<NLINHAS; i++){
-						
-					}
-					printf("%s", linha);
-				}				
-				/*for(i=0; i<NLINHAS; i++){
-				fgets(linha, sizeof(NCOLUNAS), fp);
 					for(j=0; j<NCOLUNAS; j++){
 						array_ptr[i][j].letra = linha[j];
 					}
-				}*/
+					i++;
+				}
+				printf("Mapa carregado com sucesso.\n");
 				fclose(fp);
 			}else if(strcmp(cmdaux, "mostra") == 0){
 				for(i=0; i<NLINHAS; i++){
@@ -184,48 +197,73 @@ int main(void){
 
 		if(FD_ISSET(sfifofd, &read_fds)){ //alguma coisa no fifo do servidor?
 			//falta rever o login nao se sabe o PID nao primeira mensagem do cliente para o servidor
-			//
+			//header = 0 -> logins
+			//header = 1 -> jogadas
 			lidos = read(sfifofd, &header, sizeof(int));
 			printf("Recebido header tipo %d (%d bytes)\n", header, lidos);
-			if(header == 0){
+			if(header == 0){ //REVER OS LOGINS AINDA ESTAO COM ERROS
 				lidos = read(sfifofd, &log, sizeof(LOGIN));
 				printf("Recebido tentativa de Login do pid: %d (%d bytes)\n", log.pid, lidos);
-				printf("Tratamento do Login:\nUsername: %s / Password: %s\n", log.username, log.password);
+				printf("Tratamento do Login: Username: %s / Password: %s\n", log.username, log.password); 
+
 				sprintf(cpid, "%d", log.pid);
-				cfifofd = open(cpid, O_WRONLY);
-				strcpy(mensagem.msg.texto, "Login feito com sucesso.");
-				escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
-			}else{
-				//outro tipo de mensagem
-			}
-/*
-			if(procuraLogin(p.username, p.password) == 0){
-				sprintf(p.cmd, "Falha no login, password errada.");
-				write(sfifofd, &p, sizeof(PEDIDO));
-			}else if(procuraLogin(p.username, p.password) == 1){
-				i = 0;
-				do{
-					if(p.pid == pids[i]){
-						i = -1;
+
+				for(i=0; i<NMAXPLAY; i++){
+					if(jogdrs[i].pid != -1){
+						if(strcmp(jogdrs[i].username, log.username) == 0){
+							mensagem.tipo = 1;
+							sprintf(mensagem.msg.texto, "logado");
+							cfifofd = open(cpid, O_WRONLY);
+							escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+							close(cfifofd);
+						}
+					}
+				}
+
+				if(strcmp(mensagem.msg.texto, "logado") != 0){
+					res = procuraLogin(log.username, log.password);
+					if(res == 1){ //login correto
+						mensagem.tipo = 1;
+						sprintf(mensagem.msg.texto, "sucesso");
+						cfifofd = open(cpid, O_WRONLY);
+						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+						close(cfifofd);
+					}else if(res == 0){ //pass errada
+						mensagem.tipo = 1;
+						sprintf(mensagem.msg.texto, "passerr");
+						cfifofd = open(cpid, O_WRONLY);
+						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+						close(cfifofd);
+					}else if(res == 2){ //registo
+						mensagem.tipo = 1;
+						sprintf(mensagem.msg.texto, "registo");
+						cfifofd = open(cpid, O_WRONLY);
+						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+						close(cfifofd);
+					}
+				}
+
+				if(strcmp(mensagem.msg.texto, "sucesso") == 0 || strcmp(mensagem.msg.texto, "registo") == 0){
+					for(i=0; i<NMAXPLAY; i++){
+						if(jogdrs[i].pid == -1){
+							jogdrs[i].pid = log.pid;
+							sprintf(jogdrs[i].username, "%s", log.username);
+							break;
+						}
+					}
+				}
+			}else if(header == 1){ //jogadas, movimentos, bombas, etc
+				//ainda nao implementado
+			}else if(header == 2){ //quits dos clientes
+				lidos = read(sfifofd, &msg, sizeof(MENSAGEM));
+				printf("Recebido quit do cliente com pid: %s (%d bytes)\n", msg.texto, lidos);
+				for(i=0; i<NMAXPLAY; i++){
+					if(jogdrs[i].pid == atoi(msg.texto)){
+						jogdrs[i].pid = -1;
 						break;
 					}
-					i++;
-				}while(pids[i] != -1);
-				if(i == -1){
-					sprintf(p.cmd, "A conta ja se encontra logada.");
-					write(cfifofd, &p, sizeof(PEDIDO));
-				}else{
-					sprintf(p.cmd, "sucesso");
-					sprintf(p.msg, "Login efetuado com sucesso!");
-					write(cfifofd, &p, sizeof(PEDIDO));
 				}
-			}else if(procuraLogin(p.username, p.password) == 2){
-				sprintf(p.cmd, "sucesso");
-				sprintf(p.msg, "Registo efetuado com sucesso.");
-				write(cfifofd, &p, sizeof(PEDIDO));
 			}
-*/
-		close(cfifofd);
 		}	
 	}
 }
