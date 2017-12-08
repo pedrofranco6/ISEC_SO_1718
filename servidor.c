@@ -4,19 +4,18 @@ int sfifofd, cfifofd;
 JOGADOR jogdrs[NMAXPLAY];
 
 void terminaServer(){
-	int i;
+	int i, escritos;
 	char cpid[10];
 	Tmsg mensagem;
 	printf("\nServidor a terminar (interrompido por teclado).\n\n");
 	//broadcast para todos users online que o server vai terminar
+	mensagem.tipo = 1;
+	sprintf(mensagem.msg.texto, "shutdown");
 	for(i=0; i<NMAXPLAY; i++){
 		if(jogdrs[i].pid != -1){
 			sprintf(cpid, "%d", jogdrs[i].pid);
-			mensagem.tipo = 2;
-			sprintf(mensagem.msg.texto, "shutdown");
-printf("%d %s %s\n", i, cpid, mensagem.msg.texto); //terminar o erro do broadcast para o quit
 			cfifofd = open(cpid, O_WRONLY);
-			write(cfifofd, &mensagem, sizeof(Tmsg)); //mensagem mal enviada?
+			escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
 			close(cfifofd);
 		}
 	}
@@ -26,13 +25,14 @@ printf("%d %s %s\n", i, cpid, mensagem.msg.texto); //terminar o erro do broadcas
 }
 
 int procuraLogin(char username[], char password[]){
-	char user[20], pass[20];
+	char user[20], pass[20], linha[256];
 	FILE *fp;
 
 	fp = fopen("logins.txt", "r+");
+	fseek(fp, 0, SEEK_SET);
 
-	while(fgetc(fp) != EOF){
-		fscanf(fp, "%s %s", user, pass);
+	while(fgets(linha, sizeof(linha), fp)){
+		sscanf(linha, "%s %s", user, pass);
 		if(strcmp(username, user) == 0){
 			if(strcmp(password, pass) == 0){
 				fclose(fp);
@@ -43,6 +43,7 @@ int procuraLogin(char username[], char password[]){
 			}
 		}
 	}
+
 	fprintf(fp, "%s %s\n", username, password);
 	fclose(fp);
 	return 2; //feito registo
@@ -86,7 +87,7 @@ int main(void){
 	sfifofd = open("sfifo", O_RDWR);
 
 	if(sfifofd == -1){
-		perror("Erro a abrir o FIFO do ervidor (RDWR/bloqueado).\n");
+		perror("Erro a abrir o FIFO do servidor (RDWR/bloqueado).\n");
 		close(sfifofd);
 		unlink("sfifo");
 		exit(EXIT_FAILURE);
@@ -130,6 +131,7 @@ int main(void){
 				i=0;
 				sscanf(cmd, "add %s %s", username, password);
 				fp_logins = fopen("logins.txt", "r+");
+				fseek(fp_logins, 0, SEEK_SET);
 				while(!feof(fp_logins)){
 					fscanf(fp_logins, "%s %s", usernameaux, passwordaux);
 					if(strcmp(username, usernameaux) == 0){
@@ -252,6 +254,7 @@ sprintf(cmdaux, "mapa0.txt");
 						}
 					}
 				}
+				sprintf(mensagem.msg.texto, "0");
 			}else if(header == 1){ //jogadas, movimentos, bombas, etc
 				//ainda nao implementado
 			}else if(header == 2){ //quits dos clientes

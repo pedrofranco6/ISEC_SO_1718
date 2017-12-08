@@ -5,7 +5,7 @@ int sfifofd, cfifofd;
 void terminaCliente(int i){
 	char cpid[10];
 	Tmsg mensagem;
-	printf("\nCliente a terminar (interrompido por teclado).\n\n");
+	printf("\nCliente a terminar.\n\n");
 	sfifofd = open("sfifo", O_WRONLY);
 	mensagem.tipo = 2;
 	sprintf(mensagem.msg.texto, "%d", getpid());
@@ -18,7 +18,7 @@ void terminaCliente(int i){
 }
 
 int main(){
-	int i, j, header, lidos, escritos;
+	int i, j, res, header, lidos, escritos;
 	
 	char fifopid[10];
 	Tlogin login;
@@ -34,31 +34,38 @@ int main(){
 	}
 	printf("Sinal SIGINT configurado com sucesso\n");
 
-	login.log.pid = getpid();
-	sprintf(fifopid, "%d", login.log.pid);
-	if(mkfifo(fifopid, 0777) == -1){
-		perror("FIFO do cliente deu erro.\n");
-		exit(EXIT_FAILURE);
-	}
-	printf("FIFO do cliente criado.\n");
+	sprintf(fifopid, "%d", getpid());
+	res = mkfifo(fifopid, 0777);
 
-	sfifofd = open("sfifo", O_WRONLY);
-	if(sfifofd == -1){
-		perror("O servidor nao esta  correr.\n");
+	if(res == -1){
+		perror("mkfifo do FIFO do cliente deu erro\n");
+		close(cfifofd);
 		unlink(fifopid);
 		exit(EXIT_FAILURE);
 	}
-	printf("FIFO do do servidor aberto em WRITE.\n");
+	printf("FIFO do servidor criado com sucesso.\n");
 
 	cfifofd = open(fifopid, O_RDWR);
+
 	if(cfifofd == -1){
 		perror("Erro a abrir o FIFO do cliente.\n");
-		close(sfifofd);
+		close(cfifofd);
 		unlink(fifopid);
 		exit(EXIT_FAILURE);
 	}
 	printf("FIFO o cliente aberto em READ (+WIRTE).\n");
 
+	sfifofd = open("sfifo", O_WRONLY);
+
+	if(sfifofd == -1){
+		perror("O servidor nao esta  correr.\n");
+		close(cfifofd);
+		unlink(fifopid);
+		exit(EXIT_FAILURE);
+	}
+	printf("FIFO do do servidor aberto em WRITE.\n");
+
+	login.log.pid = getpid();
 	do{
 		printf("Username: ");
 		scanf("%s", login.log.username);
@@ -88,9 +95,9 @@ int main(){
 
 		FD_ZERO(&read_fds);
 		FD_SET(0, &read_fds);
-		FD_SET(sfifofd, &read_fds);
+		FD_SET(cfifofd, &read_fds);
 
-		nfd = select(sfifofd+1, &read_fds, NULL, NULL, &tempo);
+		nfd = select(cfifofd+1, &read_fds, NULL, NULL, &tempo);
 
 		if(nfd == 0){
 			printf("Cliente a espera...\n");
@@ -115,13 +122,14 @@ int main(){
 			//header = 1 -> mensagens
 			//ler do fifo de cliente
 			lidos = read(cfifofd, &header, sizeof(int));
-printf("header = %d\n", header);
 			if(header == 0){
 			}else if(header == 1){
 				lidos = read(cfifofd, &resp, sizeof(MENSAGEM));
-printf("mensagem lida -> %s\n", resp.texto);
-				if(strcmp(resp.texto, "shutdown") == 0){
-printf("entrou no terminar\n");
+				if(strcmp(resp.texto, "shutdown") == 0 || strcmp(resp.texto, "kick") == 0){
+					if(strcmp(resp.texto, "shutdown") == 0)
+						printf("O servidor terminou, o seu cliente vai ser fechado.\n");
+					else if(strcmp(resp.texto, "kick") == 0)
+						printf("Foste kickado pelo servidor.\n");
 					terminaCliente(1);
 				}
 			}
