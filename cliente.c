@@ -65,12 +65,14 @@ int main(){
 	}
 	printf("FIFO do do servidor aberto em WRITE.\n");
 
-	login.log.pid = getpid();
 	do{
 		printf("Username: ");
 		scanf("%s", login.log.username);
 		printf("Password: ");
 		scanf("%s", login.log.password);
+
+		login.tipo = 0;
+		login.log.pid = getpid();
 
 		write(sfifofd, &login, sizeof(Tlogin));
 		read(cfifofd, &header, sizeof(int));

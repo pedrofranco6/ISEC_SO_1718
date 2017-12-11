@@ -20,10 +20,9 @@
 #define NENEMY 3
 
 typedef struct{
+	int pid;
 	char username[20];
 	char password[20];
-	int pid;
-	int jog_logado;
 }LOGIN;
 
 typedef struct{
@@ -42,8 +41,7 @@ typedef struct{
 
 typedef struct{
 	int pid;
-	int movimento;
-	int item;
+	char jogd[10];
 }JOGADA;
 
 typedef struct{
@@ -63,8 +61,6 @@ typedef struct{
 	char letra;
 	int jogador;
 	int inimigo;
-	int bombinha;
-	int megabomba;
 }CELULAS;
 
 typedef struct{

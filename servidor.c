@@ -11,6 +11,7 @@ void terminaServer(){
 	//broadcast para todos users online que o server vai terminar
 	mensagem.tipo = 1;
 	sprintf(mensagem.msg.texto, "shutdown");
+
 	for(i=0; i<NMAXPLAY; i++){
 		if(jogdrs[i].pid != -1){
 			sprintf(cpid, "%d", jogdrs[i].pid);
@@ -25,11 +26,20 @@ void terminaServer(){
 }
 
 int procuraLogin(char username[], char password[]){
+	int i;
 	char user[20], pass[20], linha[256];
 	FILE *fp;
 
 	fp = fopen("logins.txt", "r+");
 	fseek(fp, 0, SEEK_SET);
+
+	for(i=0; i<NMAXPLAY; i++){
+		if(jogdrs[i].pid != -1){
+			if(strcmp(jogdrs[i].username, username) == 0){
+				return 3;
+			}
+		}
+	}
 
 	while(fgets(linha, sizeof(linha), fp)){
 		sscanf(linha, "%s %s", user, pass);
@@ -79,7 +89,6 @@ int main(void){
 	if(res == -1){
 		perror("mkfifo do FIFO do servidor deu erro\n");
 		close(sfifofd);
-		unlink("sfifo");
 		exit(EXIT_FAILURE);
 	}
 	printf("FIFO do servidor criado com sucesso.\n");
@@ -203,49 +212,32 @@ sprintf(cmdaux, "mapa0.txt");
 			//header = 1 -> jogadas
 			lidos = read(sfifofd, &header, sizeof(int));
 			printf("Recebido header tipo %d (%d bytes)\n", header, lidos);
-			if(header == 0){ //REVER OS LOGINS AINDA ESTAO COM ERROS
+			if(header == 0){ 
 				lidos = read(sfifofd, &log, sizeof(LOGIN));
 				printf("Recebido tentativa de Login do pid: %d (%d bytes)\n", log.pid, lidos);
 				printf("Tratamento do Login: Username: %s / Password: %s\n", log.username, log.password); 
 
 				sprintf(cpid, "%d", log.pid);
 
-				for(i=0; i<NMAXPLAY; i++){
-					if(jogdrs[i].pid != -1){
-						if(strcmp(jogdrs[i].username, log.username) == 0){
-							mensagem.tipo = 1;
-							sprintf(mensagem.msg.texto, "logado");
-							cfifofd = open(cpid, O_WRONLY);
-							escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
-							close(cfifofd);
-						}
-					}
+				res = procuraLogin(log.username, log.password);
+				if(res == 1){ //login correto
+					sprintf(mensagem.msg.texto, "sucesso");					
+				}else if(res == 0){ //pass errada
+					sprintf(mensagem.msg.texto, "passerr");
+				}else if(res == 2){ //registo
+					sprintf(mensagem.msg.texto, "registo");
+				}else if(res == 3){ //logado
+					sprintf(mensagem.msg.texto, "logado");
+				}else{
+					sprintf(mensagem.msg.texto, "erro");
 				}
 
-				if(strcmp(mensagem.msg.texto, "logado") != 0){
-					res = procuraLogin(log.username, log.password);
-					if(res == 1){ //login correto
-						mensagem.tipo = 1;
-						sprintf(mensagem.msg.texto, "sucesso");
-						cfifofd = open(cpid, O_WRONLY);
-						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
-						close(cfifofd);
-					}else if(res == 0){ //pass errada
-						mensagem.tipo = 1;
-						sprintf(mensagem.msg.texto, "passerr");
-						cfifofd = open(cpid, O_WRONLY);
-						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
-						close(cfifofd);
-					}else if(res == 2){ //registo
-						mensagem.tipo = 1;
-						sprintf(mensagem.msg.texto, "registo");
-						cfifofd = open(cpid, O_WRONLY);
-						escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
-						close(cfifofd);
-					}
-				}
+				mensagem.tipo = 1;
+				cfifofd = open(cpid, O_WRONLY);
+				escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
+				close(cfifofd);
 
-				if(strcmp(mensagem.msg.texto, "sucesso") == 0 || strcmp(mensagem.msg.texto, "registo") == 0){
+				if(res == 1 || res == 2){
 					for(i=0; i<NMAXPLAY; i++){
 						if(jogdrs[i].pid == -1){
 							jogdrs[i].pid = log.pid;
@@ -254,7 +246,6 @@ sprintf(cmdaux, "mapa0.txt");
 						}
 					}
 				}
-				sprintf(mensagem.msg.texto, "0");
 			}else if(header == 1){ //jogadas, movimentos, bombas, etc
 				//ainda nao implementado
 			}else if(header == 2){ //quits dos clientes
