@@ -11,7 +11,6 @@
 #include <ctype.h>
 #include <limits.h>
 #include <signal.h>
-#include <pthread.h>
 
 #define NLINHAS 21
 #define NCOLUNAS 41
@@ -31,7 +30,7 @@ typedef struct{
 }Tlogin;
 
 typedef struct{
-	char texto[100];
+	char texto[1024];
 }MENSAGEM;
 
 typedef struct{
@@ -41,7 +40,7 @@ typedef struct{
 
 typedef struct{
 	int pid;
-	char jogd[10];
+	char jogd;
 }JOGADA;
 
 typedef struct{
@@ -52,10 +51,28 @@ typedef struct{
 typedef struct{
 	int pid;
 	char username[20];
-	int posx; int posy;
+	int posx, posy;
+	int atirar;
 	int bombinhas;
 	int megaBombas;
+	int pontos;
 }JOGADOR;
+
+typedef struct{
+	pthread_t tid;	
+	int posx, posy;
+	int tipo;
+	int ativa;
+	void *retval;
+}BOMBA;
+
+typedef struct{
+	pthread_t tid;
+	char letra;
+	int posx, posy;
+	int continua;
+	void *retval;
+}INIMIGO;
 
 typedef struct{
 	char letra;

@@ -1,4 +1,5 @@
 #include "util.h"
+#include <ncurses.h>
 
 int sfifofd, cfifofd;
 
@@ -14,6 +15,7 @@ void terminaCliente(int i){
 	close(cfifofd);
 	sprintf(cpid, "%d", getpid());
 	unlink(cpid);
+	endwin();
 	exit(EXIT_SUCCESS);
 }
 
@@ -22,6 +24,7 @@ int main(){
 	
 	char fifopid[10];
 	Tlogin login;
+	Tjogada jogada;
 	MENSAGEM resp;
 
 	int nfd;
@@ -91,8 +94,17 @@ int main(){
 	else if(strcmp(resp.texto, "registo") == 0)
 		printf("Registo efetuado com sucesso.\n");
 
+	char c;
+
+	initscr();
+	clear();
+	noecho();
+	cbreak();
+	curs_set(0);
+	refresh();
+	
 	while(1){
-		tempo.tv_sec = 10;
+		tempo.tv_sec = 1;
 		tempo.tv_usec = 0;
 
 		FD_ZERO(&read_fds);
@@ -102,9 +114,8 @@ int main(){
 		nfd = select(cfifofd+1, &read_fds, NULL, NULL, &tempo);
 
 		if(nfd == 0){
-			printf("Cliente a espera...\n");
-			fflush(stdout);
-			continue; //deve ter mesmo continue? ou ficar bloqueado?
+			refresh();
+			continue;
 		}
 
 		if(nfd == -1){
@@ -117,6 +128,69 @@ int main(){
 		if(FD_ISSET(0, &read_fds)){
 			//ler do teclado
 			//jogadas, movimentos, etc.
+			c = getch();
+			switch(c){
+				case 'w':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'w';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 's':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 's';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'd':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'd';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'a':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'a';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'b':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'b';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'm':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'm';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'i':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'i';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'k':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'k';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'j':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'j';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+				case 'l':
+					jogada.tipo = 1;
+					jogada.jog.pid = getpid();
+					jogada.jog.jogd = 'l';
+					write(sfifofd, &jogada, sizeof(Tjogada));
+					break;
+			}
 		}
 
 		if(FD_ISSET(cfifofd, &read_fds)){
@@ -125,13 +199,18 @@ int main(){
 			//ler do fifo de cliente
 			lidos = read(cfifofd, &header, sizeof(int));
 			if(header == 0){
+				//limpar ecra e fazer print interface
+				clear();
+				lidos = read(cfifofd, &resp, sizeof(MENSAGEM));
+				printw("%s", resp.texto);
+				refresh();
 			}else if(header == 1){
 				lidos = read(cfifofd, &resp, sizeof(MENSAGEM));
 				if(strcmp(resp.texto, "shutdown") == 0 || strcmp(resp.texto, "kick") == 0){
 					if(strcmp(resp.texto, "shutdown") == 0)
-						printf("O servidor terminou, o seu cliente vai ser fechado.\n");
+						printw("O servidor terminou, o seu cliente vai ser fechado.\n");
 					else if(strcmp(resp.texto, "kick") == 0)
-						printf("Foste kickado pelo servidor.\n");
+						printw("Foste kickado pelo servidor.\n");
 					terminaCliente(1);
 				}
 			}
