@@ -528,8 +528,7 @@ int main(void){
 			}else if(strcmp(cmdaux, "shutdown") == 0 || strcmp(cmdaux, "quit") == 0){
 				terminaServer(1);
 			}else if(strcmp(cmdaux, "map") == 0){
-				//sscanf(cmd, "map %s", cmdaux);
-sprintf(cmdaux, "mapa0.txt");
+				/*sscanf(cmd, "map %s", cmdaux);
 				printf("A carregar mapa... -> %s\n", cmdaux);
 				FILE *fp = fopen(cmdaux, "r");
 				char linha[256];
@@ -541,7 +540,7 @@ sprintf(cmdaux, "mapa0.txt");
 					i++;
 				}
 				printf("Mapa carregado com sucesso.\n");
-				fclose(fp);
+				fclose(fp);*/
 			}else if(strcmp(cmdaux, "mostra") == 0){
 				for(i=0; i<NLINHAS; i++){
 					for(j=0; j<NCOLUNAS; j++){
