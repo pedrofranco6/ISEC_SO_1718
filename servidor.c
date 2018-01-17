@@ -271,8 +271,8 @@ int main(void){
 	}
 
 	while(1){
-		tempo.tv_sec = 1;
-		tempo.tv_usec = 0;
+		tempo.tv_sec = 0;
+		tempo.tv_usec = 500000;
 
 		FD_ZERO(&read_fds);
 		FD_SET(0, &read_fds);
@@ -283,6 +283,12 @@ int main(void){
 			if(jogdrs[i].pid != -1){
 				if(array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'X' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'b' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'm')
 					kickJogador(i);
+				else{
+					for(j=0; j<NENEMY; j++){
+						if(jogdrs[i].posy == inimigos[j].posy && jogdrs[i].posx == inimigos[j].posx)
+							kickJogador(i);
+					}
+				}
 			}
 		}
 
