@@ -242,7 +242,7 @@ int main(void){
 		}while(array_ptr[posy][posx].letra != 32);
 		array_ptr[posy][posx].letra = 'H';
 		i--;
-	
+	}
 	/*i = NOBJECT;
 	while(i != 0){
 		do{
