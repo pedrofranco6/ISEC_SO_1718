@@ -6,7 +6,7 @@ int sfifofd, cfifofd;
 void terminaCliente(int i){
 	char cpid[10];
 	Tmsg mensagem;
-	printf("\nCliente a terminar.\n\n");
+	printw("\nCliente a terminar.\n\n");
 	sfifofd = open("sfifo", O_WRONLY);
 	mensagem.tipo = 2;
 	sprintf(mensagem.msg.texto, "%d", getpid());

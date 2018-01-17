@@ -12,7 +12,7 @@ void terminaServer(){
 	int i, escritos;
 	char cpid[10];
 	Tmsg mensagem;
-	printf("\nServidor a terminar (interrompido por teclado).\n\n");
+	printf("\nServidor a terminar.\n\n");
 	//broadcast para todos users online que o server vai terminar
 	mensagem.tipo = 1;
 	sprintf(mensagem.msg.texto, "shutdown");
@@ -181,7 +181,8 @@ void kickJogador(int i){
 }
 
 int main(void){
-	int lidos, escritos, res, i, j, nfd, pid, posx, posy;
+	int lidos, escritos, res, i, j, q, w, nfd, pid, posx, posy, random, portax, portay, fim;
+	int pontos, pontuacaoMax = 0;
 	char cmd[50], cmdaux[50], username[20], password[20], usernameaux[20], passwordaux[20], primap[10] = "mapa0.txt", aux[2];
 	FILE *fp_logins;
 	fd_set read_fds;
@@ -196,6 +197,8 @@ int main(void){
 
 	for(i=0; i<20; jogdrs[i++].pid = -1);
 	for(i=0; i<200; bombas[i++].ativa = 0);
+	for(i=0; i<NLINHAS; i++)
+		for(j=0; j<NCOLUNAS; array_ptr[i][j++].objeto = 0);
 
 	if(signal(SIGINT, terminaServer) == SIG_ERR){
 		perror("Nao foi possivel configurar o sinal SIGINT\n");
@@ -233,8 +236,14 @@ int main(void){
 		i++;
 	}
 	fclose(fp);
-	i = ((NLINHAS-2) * (NCOLUNAS-2) - 171) * 0.2;
-	//i = 0;
+	//fazer porta portax, portay
+	do{
+		portay = rand() % 21 + 1;
+		portax = rand() % 41 + 1;
+	}while(array_ptr[portay][portax].letra != '|' && array_ptr[portay][portax].letra != '-');
+	array_ptr[portay][portax].letra = 'Z';
+	//i = ((NLINHAS-2) * (NCOLUNAS-2) - 171) * 0.2;
+	i = 0;
 	while(i > 0){
 		do{
 			posy = rand() % 19 + 1;
@@ -243,16 +252,45 @@ int main(void){
 		array_ptr[posy][posx].letra = 'H';
 		i--;
 	}
-	/*i = NOBJECT;
+	//fazer drops
+	i = NOBJECT;
 	while(i != 0){
 		do{
 			posy = rand() % 19 + 1;
 			posx = rand() % 39 + 1;
-			if(array_ptr[posy][posx].letra == ' ')
-				array_ptr[posy][posx].letra = 'O';
-		}while(array_ptr[posy][posx].letra == ' ');
+		}while(array_ptr[posy][posx].letra != 32);
+		j = rand() % 100;
+		//5 10 15 20 20 30
+		if(j < 5){
+			array_ptr[posy][posx].letra = 'E';
+			array_ptr[posy][posx].objeto = 1;
+			array_ptr[posy][posx].obj = 'e';
+		}else if(j < 15){
+			array_ptr[posy][posx].letra = 'M';
+			array_ptr[posy][posx].objeto = 1;
+			array_ptr[posy][posx].obj = 'm';
+		}else if(j < 30){
+			array_ptr[posy][posx].letra = 'B';
+			array_ptr[posy][posx].objeto = 1;
+			array_ptr[posy][posx].obj = 'b';
+		}else if(j < 70){
+			if(rand() % 2 == 1){
+				array_ptr[posy][posx].letra = 'C';
+				array_ptr[posy][posx].objeto = 1;
+				array_ptr[posy][posx].obj = 'c';
+			}else{
+				array_ptr[posy][posx].letra = 'A';
+				array_ptr[posy][posx].objeto = 1;
+				array_ptr[posy][posx].obj = 'a';
+			}
+		}else if(j < 100){
+			array_ptr[posy][posx].letra = 'P';
+			array_ptr[posy][posx].objeto = 1;
+			array_ptr[posy][posx].obj = 'p';
+			pontuacaoMax += 10;
+		}
 		i--;
-	}*/
+	}
 	//fazer bots
 	for(i=0; i<NENEMY; i++){
 		inimigos[i].continua = 1;
@@ -281,12 +319,35 @@ int main(void){
 		//mata jogadores
 		for(i=0; i<20; i++){
 			if(jogdrs[i].pid != -1){
-				if(array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'X' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'b' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'm')
-					kickJogador(i);
-				else{
+				if(array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'X' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'b' || array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == 'm'){
+					if(jogdrs[i].vidaExtra > 0){
+						jogdrs[i].vidaExtra--;
+						array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == ' ';
+						do{
+							posy = rand() % 19 + 1;
+							posx = rand() % 39 + 1;
+						}while(array_ptr[posy][posx].letra != 32);
+						jogdrs[i].posy = posy;
+						jogdrs[i].posx = posx;
+						array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == i+1+'0';
+					}else
+						kickJogador(i);
+				}else{
 					for(j=0; j<NENEMY; j++){
-						if(jogdrs[i].posy == inimigos[j].posy && jogdrs[i].posx == inimigos[j].posx)
-							kickJogador(i);
+						if(jogdrs[i].posy == inimigos[j].posy && jogdrs[i].posx == inimigos[j].posx){
+					if(jogdrs[i].vidaExtra > 0){
+						jogdrs[i].vidaExtra--;
+						array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == ' ';
+						do{
+							posy = rand() % 19 + 1;
+							posx = rand() % 39 + 1;
+						}while(array_ptr[posy][posx].letra != 32);
+						jogdrs[i].posy = posy;
+						jogdrs[i].posx = posx;
+						array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra == i+1+'0';
+					}else
+						kickJogador(i);
+						}
 					}
 				}
 			}
@@ -298,8 +359,99 @@ int main(void){
 				inimigos[i].continua = 0;
 		}
 
+		//agarra drops jogadores
+		for(i=0; i<20; i++){
+			if(jogdrs[i].pid != -1){
+				if(array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto == 1){
+					switch(array_ptr[jogdrs[i].posy][jogdrs[i].posx].obj){
+						case 'p':
+							jogdrs[i].pontos += 10;
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							break;						
+						case 'a':
+							jogdrs[i].atirar = 1;
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							break;
+						case 'c':
+							//recolhe os 5 primeiros items
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							for(q=0; q<NLINHAS; q++){
+								for(w=0; w<NCOLUNAS; w++){
+									if(array_ptr[q][w].objeto == 1 && array_ptr[q][w].obj != 'c'){
+										switch(array_ptr[q][w].obj){
+											case 'p':
+												jogdrs[i].pontos += 10;
+												array_ptr[q][w].objeto = 0;
+												array_ptr[q][w].letra = ' ';
+												break;						
+											case 'a':
+												if(jogdrs[i].atirar == 0){
+													jogdrs[i].atirar = 1;
+													array_ptr[q][w].objeto = 0;
+													array_ptr[q][w].letra = ' ';
+												}
+												break;
+											case 'b':
+												jogdrs[i].bombinhas += 1;
+												array_ptr[q][w].objeto = 0;
+												array_ptr[q][w].letra = ' ';
+												break;
+											case 'm':
+												jogdrs[i].megaBombas += 1;
+												array_ptr[q][w].objeto = 0;
+												array_ptr[q][w].letra = ' ';
+												break;
+											case 'e':
+												jogdrs[i].vidaExtra += 1;
+												array_ptr[q][w].objeto = 0;
+												array_ptr[q][w].letra = ' ';
+												break;
+										}
+									}
+								}
+							}
+							break;
+						case 'b':
+							jogdrs[i].bombinhas += 1;
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							break;
+						case 'm':
+							jogdrs[i].megaBombas += 1;
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							break;
+						case 'e':
+							jogdrs[i].vidaExtra += 1;
+							array_ptr[jogdrs[i].posy][jogdrs[i].posx].objeto = 0;
+							break;						
+					}
+				}
+			}
+		}
+
+		//algum jogador na porta?
+		fim = 0;
+		pontos = 0;
+		for(i=0; i<20; i++){
+			if(jogdrs[i].pid != -1)
+				pontos += jogdrs[i].pontos;
+		}
+		for(i=0; i<20; i++){
+			if(jogdrs[i].pid != -1){
+				if(jogdrs[i].posy == portay && jogdrs[i].posx == portax){
+					if(pontos == pontuacaoMax)
+						fim = 1;
+				}
+			}
+		}
+		if(fim == 1){
+			printf("Os jogadores venceram o mapa!\n");
+			terminaServer();
+			//break;
+		}
+
 		//envia mapa para os clientes
 		memset(mensagem.msg.texto, 0, sizeof(mensagem.msg.texto));
+		array_ptr[portay][portax].letra = 'Z';
 		for(i=0; i<20; i++){
 			if(jogdrs[i].pid != -1){
 				array_ptr[jogdrs[i].posy][jogdrs[i].posx].letra = i+1+'0';
@@ -319,14 +471,13 @@ int main(void){
 				cfifofd = open(cpid, O_WRONLY);
 				escritos = write(cfifofd, &mensagem, sizeof(Tmsg));
 				close(cfifofd);
-				printf("Enviei mapa para %d.\n", jogdrs[i].pid);
 			}
 		}
 
 		nfd = select(sfifofd+1, &read_fds, NULL, NULL, &tempo);
 
 		if(nfd == 0){
-			printf("Estou a espera...\n"); fflush(stdout);
+			/*printf("Estou a espera...\n");*/ fflush(stdout);
 			continue;
 		}
 
@@ -450,6 +601,7 @@ sprintf(cmdaux, "mapa0.txt");
 							jogdrs[i].atirar = 0;
 							jogdrs[i].bombinhas = 3;
 							jogdrs[i].megaBombas = 2;
+							jogdrs[i].vidaExtra = 0;
 							array_ptr[posy][posx].letra = i+1+'0';
 							break;
 						}

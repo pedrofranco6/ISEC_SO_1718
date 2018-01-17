@@ -56,6 +56,7 @@ typedef struct{
 	int bombinhas;
 	int megaBombas;
 	int pontos;
+	int vidaExtra;
 }JOGADOR;
 
 typedef struct{
@@ -76,8 +77,8 @@ typedef struct{
 
 typedef struct{
 	char letra;
-	int jogador;
-	int inimigo;
+	int objeto;
+	char obj;
 }CELULAS;
 
 typedef struct{
